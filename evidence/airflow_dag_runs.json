@@ -1,0 +1,6 @@
+{
+  "detail": null,
+  "status": 401,
+  "title": "Unauthorized",
+  "type": "https://airflow.apache.org/docs/apache-airflow/2.9.0/stable-rest-api-ref.html#section/Errors/Unauthenticated"
+}

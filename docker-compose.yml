@@ -1,0 +1,61 @@
+version: '3.8'
+
+x-airflow-common: &airflow-common
+  image: apache/airflow:2.9.0
+  environment:
+    AIRFLOW__CORE__EXECUTOR: LocalExecutor
+    AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://airflow:airflow@postgres/airflow
+    AIRFLOW__CORE__LOAD_EXAMPLES: 'false'
+    PYTHONPATH: /opt/airflow
+    AIRFLOW_INPUT_FILE: /opt/airflow/data/orders_failed.csv
+    DISCORD_WEBHOOK_URL: 'https://discord.com/api/webhooks/1504746144834523286/UauKFbJlOME0Cj2hFSB8BwLhulu5sn-KLXP1S-qButtgCcGlS6qoM4Z1d51aCLooPExN'
+  volumes:
+    - ./starter_project/dags:/opt/airflow/dags
+    - ./starter_project/src:/opt/airflow/src
+    - ./starter_project/data:/opt/airflow/data
+    - ./starter_project/output:/opt/airflow/output
+    - airflow-logs:/opt/airflow/logs
+  depends_on:
+    postgres:
+      condition: service_healthy
+
+services:
+  postgres:
+    image: postgres:15
+    environment:
+      POSTGRES_USER: airflow
+      POSTGRES_PASSWORD: airflow
+      POSTGRES_DB: airflow
+    healthcheck:
+      test: ["CMD", "pg_isready", "-U", "airflow"]
+      interval: 5s
+      retries: 5
+    volumes:
+      - postgres-db:/var/lib/postgresql/data
+
+  airflow-init:
+    <<: *airflow-common
+    command: bash -c "airflow db init && airflow users create --username admin --password admin --firstname Admin --lastname User --role Admin --email admin@example.com"
+    restart: "no"
+
+  airflow-webserver:
+    <<: *airflow-common
+    command: webserver
+    ports:
+      - "8080:8080"
+    depends_on:
+      airflow-init:
+        condition: service_completed_successfully
+    restart: always
+
+  airflow-scheduler:
+    <<: *airflow-common
+    command: scheduler
+    depends_on:
+      airflow-init:
+        condition: service_completed_successfully
+    restart: always
+
+volumes:
+  postgres-db:
+  airflow-logs:
